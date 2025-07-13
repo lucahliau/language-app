@@ -10,6 +10,13 @@ import {
     signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
+import { 
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc // Add this 
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
 // 2. Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDhPpzjlJ_SdN8c6RMninbITyEyEZZ1kC4",
@@ -20,9 +27,11 @@ const firebaseConfig = {
     appId: "1:1098129446152:web:085f54b4c5cacf23da48bd",
     measurementId: "G-D0HLJJVPL1"
 };
+
 // 3. Initialize Firebase and get references to services
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app); // <-- Add this line
 const provider = new GoogleAuthProvider();
 
 // 4. Get DOM elements
@@ -37,6 +46,8 @@ const createAccountBtn = document.getElementById('create-account-btn');
 const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const userPicImg = document.getElementById('user-pic');
+const diagnosticContainer = document.getElementById('diagnostic-container');
+const finishDiagnosticBtn = document.getElementById('finish-diagnostic-btn');
 
 // 5. Authentication Logic
 function signInWithGoogle() {
@@ -50,6 +61,24 @@ function createAccount() {
     if (!email || !password) return alert('Please enter email and password.');
 
     createUserWithEmailAndPassword(auth, email, password)
+        .then(userCredential => {
+            // User account created successfully. Now, create their profile in Firestore.
+            const user = userCredential.user;
+            // Create a document reference in the 'users' collection with the user's UID
+            const userDocRef = doc(db, "users", user.uid);
+
+            // Set the initial data for the new user
+            return setDoc(userDocRef, {
+                email: user.email,
+                createdAt: new Date(),
+                hasCompletedDiagnostic: false, // This is the crucial flag!
+                level: 'unassessed'
+            });
+        })
+        .then(() => {
+            console.log("User profile created in Firestore.");
+            // The onAuthStateChanged listener will automatically handle showing the app.
+        })
         .catch(error => alert(`Account Creation Error: ${error.message}`));
 }
 
@@ -67,25 +96,51 @@ function doSignOut() {
 }
 
 // 6. Auth state listener (THE MOST IMPORTANT PART)
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // User is signed in, show the main app and hide the auth screen
-        mainAppContainer.classList.remove('hidden-view');
-        authContainer.classList.add('hidden-view');
+        // User is signed in. Check if they have completed the diagnostic.
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists() && userDocSnap.data().hasCompletedDiagnostic === true) {
+            // Show the main app if diagnostic is complete
+            mainAppContainer.classList.remove('hidden-view');
+            authContainer.classList.add('hidden-view');
+            diagnosticContainer.classList.add('hidden-view');
+        } else {
+            // Show the diagnostic quiz if it's not complete
+            diagnosticContainer.classList.remove('hidden-view');
+            mainAppContainer.classList.add('hidden-view');
+            authContainer.classList.add('hidden-view');
+        }
 
         // Display user info in the profile tab
         userNameSpan.textContent = user.displayName || user.email;
         if (user.photoURL) {
             userPicImg.src = user.photoURL;
         } else {
-            // Provide a default avatar if no photo exists
             userPicImg.src = `https://api.dicebear.com/8.x/initials/svg?seed=${user.email}`;
         }
 
     } else {
-        // User is signed out, show the auth screen and hide the main app
-        mainAppContainer.classList.add('hidden-view');
+        // User is signed out, show the auth screen
         authContainer.classList.remove('hidden-view');
+        mainAppContainer.classList.add('hidden-view');
+        diagnosticContainer.classList.add('hidden-view');
+    }
+});
+// Add this near your other event listeners
+finishDiagnosticBtn.addEventListener('click', () => {
+    const user = auth.currentUser;
+    if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        // Mark the diagnostic as complete in Firestore
+        setDoc(userDocRef, { hasCompletedDiagnostic: true }, { merge: true })
+            .then(() => {
+                // Hide diagnostic and show the main app
+                diagnosticContainer.classList.add('hidden-view');
+                mainAppContainer.classList.remove('hidden-view');
+            });
     }
 });
 
