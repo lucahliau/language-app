@@ -11,7 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 import { 
-    getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, limit
+    getFirestore, doc, setDoc, getDoc
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 // 2. Your web app's Firebase configuration
@@ -161,39 +161,29 @@ if ('serviceWorker' in navigator) {
     });
 }
 // --- QUIZ LOGIC ---
-async function fetchQuestion(difficulty) {
-    // Ensure difficulty is a number and within bounds
-    const level = Math.max(1, Math.min(3, difficulty));
-
-    const questionsRef = collection(db, "diagnosticQuestions");
-    const q = query(questionsRef, where("difficulty", "==", level), limit(10));
-    const querySnapshot = await getDocs(q);
-
-    // Filter out questions we've already used
-    const availableQuestions = querySnapshot.docs.filter(doc => !answeredQuestionIds.has(doc.id));
-    
-    // If we found a unique question at the target level, return it
+function fetchQuestion(difficulty) {
+    // Find all questions at the target difficulty that haven't been answered yet
+    const availableQuestions = DIAGNOSTIC_QUESTIONS.filter(q => 
+      q.difficulty === difficulty && !answeredQuestionIds.has(q.id)
+    );
+  
     if (availableQuestions.length > 0) {
-        const questionDoc = availableQuestions[0];
-        answeredQuestionIds.add(questionDoc.id);
-        return { id: questionDoc.id, ...questionDoc.data() };
-    } 
-    
-    // If not, try to find ANY question we haven't answered yet, regardless of difficulty
-    console.warn(`No new questions at difficulty ${level}. Searching all levels.`);
-    const allQuestionsQuery = query(collection(db, "diagnosticQuestions"));
-    const allDocsSnapshot = await getDocs(allQuestionsQuery);
-    const anyNewQuestion = allDocsSnapshot.docs.filter(doc => !answeredQuestionIds.has(doc.id));
-
-    if (anyNewQuestion.length > 0) {
-        const questionDoc = anyNewQuestion[0]; // Return the first available one
-        answeredQuestionIds.add(questionDoc.id);
-        return { id: questionDoc.id, ...questionDoc.data() };
+      const question = availableQuestions[0]; // Get the first available one
+      answeredQuestionIds.add(question.id); // Mark it as used
+      return question;
     }
-
-    // If there are absolutely no new questions left, return null
-    return null; 
-}
+  
+    // If no questions at the target difficulty, find ANY available question
+    console.warn(`No new questions at difficulty ${difficulty}. Searching all levels.`);
+    const anyNewQuestion = DIAGNOSTIC_QUESTIONS.filter(q => !answeredQuestionIds.has(q.id));
+    if (anyNewQuestion.length > 0) {
+      const question = anyNewQuestion[0];
+      answeredQuestionIds.add(question.id);
+      return question;
+    }
+  
+    return null; // No questions left
+  }
 
 function displayQuestion(question) {
     quizQuestionText.textContent = question.questionText;
@@ -208,14 +198,15 @@ function displayQuestion(question) {
     });
 }
 
-async function handleAnswer(event) {
+function handleAnswer(event) {
     if (!event.target.matches('.quiz-answer-btn')) return;
 
     quizAnswersContainer.removeEventListener('click', handleAnswer);
 
     const selectedAnswer = event.target.dataset.answer;
-    const questionDoc = await getDoc(doc(db, "diagnosticQuestions", [...answeredQuestionIds].pop()));
-    const correctAnswer = questionDoc.data().correctAnswer;
+    const lastQuestionId = [...answeredQuestionIds].pop();
+    const question = DIAGNOSTIC_QUESTIONS.find(q => q.id === lastQuestionId);
+    const correctAnswer = question.correctAnswer;
 
     if (selectedAnswer === correctAnswer) {
         event.target.style.backgroundColor = '#d4edda';
@@ -239,11 +230,14 @@ async function handleAnswer(event) {
     }, 1000);
 }
 
-async function startNextQuestion() {
-    const question = await fetchQuestion(currentDifficulty);
+function startNextQuestion() {
+    const question = fetchQuestion(currentDifficulty);
     if (question) {
         displayQuestion(question);
         quizAnswersContainer.addEventListener('click', handleAnswer);
+    } else {
+        // No more questions left, end the quiz
+        endDiagnostic();
     }
 }
 
@@ -260,3 +254,12 @@ function endDiagnostic() {
         mainAppContainer.classList.remove('hidden-view');
     }
 }
+// NEW: Hardcoded Diagnostic Question Bank
+const DIAGNOSTIC_QUESTIONS = [
+    { id: 'q1', difficulty: 1, questionText: 'Which word means "a person who loves books"?', options: ['Bibliophile', 'Philistine', 'Lexicographer', 'Polyglot'], correctAnswer: 'Bibliophile' },
+    { id: 'q2', difficulty: 1, questionText: 'A story that has been passed down through generations is a _____.', options: ['Tale', 'Folklore', 'Anecdote', 'Myth'], correctAnswer: 'Folklore' },
+    { id: 'q3', difficulty: 2, questionText: 'To _______ is to make a situation worse or more severe.', options: ['Ameliorate', 'Exacerbate', 'Alleviate', 'Assuage'], correctAnswer: 'Exacerbate' },
+    { id: 'q4', difficulty: 2, questionText: 'Something that is _______ is commonplace or lacks originality.', options: ['Exceptional', 'Novel', 'Banal', 'Esteemed'], correctAnswer: 'Banal' },
+    { id: 'q5', difficulty: 3, questionText: 'His argument was _______, filled with subtle but serious flaws.', options: ['Cogent', 'Trenchant', 'Specious', 'Perspicacious'], correctAnswer: 'Specious' },
+    { id: 'q6', difficulty: 3, questionText: 'She had a _______ for making friends easily.', options: ['Penchant', 'Aversion', 'Constraint', 'Liability'], correctAnswer: 'Penchant' },
+  ];
