@@ -45,6 +45,8 @@ const userNameSpan = document.getElementById('user-name');
 const userPicImg = document.getElementById('user-pic');
 const diagnosticContainer = document.getElementById('diagnostic-container');
 const finishDiagnosticBtn = document.getElementById('finish-diagnostic-btn');
+const quizQuestionText = document.getElementById('quiz-question-text');
+const quizAnswersContainer = document.getElementById('quiz-answers');
 // --- QUIZ STATE VARIABLES ---
 let currentDifficulty = 2; // Start at medium difficulty
 let questionsAnswered = 0;
