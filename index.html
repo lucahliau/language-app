@@ -8,34 +8,57 @@
         <link rel="stylesheet" href="styles/main.css">
     </head>
 <body>
-    <main id="app-content">
-        <div id="home-page" class="page">
-          <h1>Home</h1>
-          <p>Your daily progress and stats will appear here.</p>
-        </div>
-      
-        <div id="decks-page" class="page" hidden>
-          <h1>Decks</h1>
-          <p>A list of vocabulary decks will appear here.</p>
-        </div>
-      
-        <div id="review-page" class="page" hidden>
-          <h1>Review</h1>
-          <p>Your daily review session ("Concept Cards") will happen here.</p>
-        </div>
-      
-        <div id="profile-page" class="page" hidden>
-          <h1>Profile</h1>
-          <p>Your analytics dashboard will be here.</p>
+    <div id="auth-container">
+        <h2>Welcome</h2>
+        <p>Please sign in to continue</p>
+        
+        <div id="email-password-form">
+          <input type="email" id="email-input" placeholder="Email" required>
+          <input type="password" id="password-input" placeholder="Password" required>
+          <div class="auth-buttons">
+            <button id="email-signin-btn">Sign In</button>
+            <button id="create-account-btn">Create Account</button>
           </div>
-      </main>
+        </div>
+        
+        <p class="separator">or</p>
+        
+        <button id="google-signin-btn">Sign in with Google</button>
+      </div>
       
-      <nav id="tab-bar">
-        <button data-page="home-page" class="tab-item active">Home</button>
-        <button data-page="decks-page" class="tab-item">Decks</button>
-        <button data-page="review-page" class="tab-item">Review</button>
-        <button data-page="profile-page" class="tab-item">Profile</button>
-      </nav>
+      <div id="main-app-container" hidden>
+        <main id="app-content">
+          <div id="home-page" class="page">
+            <h1>Home</h1>
+            <p>Your daily progress and stats will appear here.</p>
+          </div>
+      
+          <div id="decks-page" class="page" hidden>
+            <h1>Decks</h1>
+          </div>
+      
+          <div id="review-page" class="page" hidden>
+            <h1>Review</h1>
+          </div>
+      
+          <div id="profile-page" class="page" hidden>
+            <h1>Profile</h1>
+            <div id="user-info">
+              <img id="user-pic" src="" alt="User Profile Picture" />
+              <p>Welcome, <span id="user-name"></span>!</p>
+              <button id="signout-btn">Sign Out</button>
+            </div>
+          </div>
+        </main>
+      
+        <nav id="tab-bar">
+          <button data-page="home-page" class="tab-item active">Home</button>
+          <button data-page="decks-page" class="tab-item">Decks</button>
+          <button data-page="review-page" class="tab-item">Review</button>
+          <button data-page="profile-page" class="tab-item">Profile</button>
+        </nav>
+      </div>
+      
       
       <script type="module" src="scripts/main.js"></script>
 </body>
