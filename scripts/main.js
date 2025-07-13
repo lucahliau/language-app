@@ -70,8 +70,8 @@ function doSignOut() {
 onAuthStateChanged(auth, user => {
     if (user) {
         // User is signed in, show the main app and hide the auth screen
-        mainAppContainer.hidden = false;
-        authContainer.hidden = true;
+        mainAppContainer.classList.remove('hidden-view');
+        authContainer.classList.add('hidden-view');
 
         // Display user info in the profile tab
         userNameSpan.textContent = user.displayName || user.email;
@@ -84,8 +84,8 @@ onAuthStateChanged(auth, user => {
 
     } else {
         // User is signed out, show the auth screen and hide the main app
-        mainAppContainer.hidden = true;
-        authContainer.hidden = false;
+        mainAppContainer.classList.add('hidden-view');
+        authContainer.classList.remove('hidden-view');
     }
 });
 

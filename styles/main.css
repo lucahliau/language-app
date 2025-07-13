@@ -7,6 +7,9 @@ html, body {
     background-color: #f4f4f9;
     color: #333;
   }
+  .hidden-view {
+    display: none !important;
+  }
   
   #app-content {
     padding: 20px;
