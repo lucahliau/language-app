@@ -11,10 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 import { 
-    getFirestore,
-    doc,
-    setDoc,
-    getDoc // Add this 
+    getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, limit
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 // 2. Your web app's Firebase configuration
@@ -48,6 +45,11 @@ const userNameSpan = document.getElementById('user-name');
 const userPicImg = document.getElementById('user-pic');
 const diagnosticContainer = document.getElementById('diagnostic-container');
 const finishDiagnosticBtn = document.getElementById('finish-diagnostic-btn');
+// --- QUIZ STATE VARIABLES ---
+let currentDifficulty = 2; // Start at medium difficulty
+let questionsAnswered = 0;
+const TOTAL_DIAGNOSTIC_QUESTIONS = 5; // The quiz will have 5 questions
+let answeredQuestionIds = new Set();
 
 // 5. Authentication Logic
 function signInWithGoogle() {
@@ -95,23 +97,24 @@ function doSignOut() {
     signOut(auth).catch(error => console.error('Sign Out Error:', error));
 }
 
-// 6. Auth state listener (THE MOST IMPORTANT PART)
+// 6. Auth state listener
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // User is signed in. Check if they have completed the diagnostic.
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists() && userDocSnap.data().hasCompletedDiagnostic === true) {
+        // Check if the user document exists and if the diagnostic is complete
+        if (userDocSnap.exists() && userDocSnap.data().hasCompletedDiagnostic) {
             // Show the main app if diagnostic is complete
             mainAppContainer.classList.remove('hidden-view');
             authContainer.classList.add('hidden-view');
             diagnosticContainer.classList.add('hidden-view');
         } else {
-            // Show the diagnostic quiz if it's not complete
+            // User is new or hasn't finished the diagnostic, so show the quiz
             diagnosticContainer.classList.remove('hidden-view');
             mainAppContainer.classList.add('hidden-view');
             authContainer.classList.add('hidden-view');
+            startNextQuestion(); // Start the quiz logic
         }
 
         // Display user info in the profile tab
@@ -127,20 +130,6 @@ onAuthStateChanged(auth, async (user) => {
         authContainer.classList.remove('hidden-view');
         mainAppContainer.classList.add('hidden-view');
         diagnosticContainer.classList.add('hidden-view');
-    }
-});
-// Add this near your other event listeners
-finishDiagnosticBtn.addEventListener('click', () => {
-    const user = auth.currentUser;
-    if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        // Mark the diagnostic as complete in Firestore
-        setDoc(userDocRef, { hasCompletedDiagnostic: true }, { merge: true })
-            .then(() => {
-                // Hide diagnostic and show the main app
-                diagnosticContainer.classList.add('hidden-view');
-                mainAppContainer.classList.remove('hidden-view');
-            });
     }
 });
 
@@ -168,4 +157,91 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');
     });
+}
+// --- QUIZ LOGIC ---
+async function fetchQuestion(difficulty) {
+    const questionsRef = collection(db, "diagnosticQuestions");
+    const q = query(questionsRef, where("difficulty", "==", difficulty), limit(10));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        console.warn(`No questions found for difficulty ${difficulty}. Trying a different level.`);
+        return fetchQuestion(difficulty > 1 ? difficulty - 1 : 1); 
+    }
+
+    const availableQuestions = querySnapshot.docs.filter(doc => !answeredQuestionIds.has(doc.id));
+    
+    if (availableQuestions.length === 0) {
+        return endDiagnostic();
+    }
+
+    const questionDoc = availableQuestions[0];
+    answeredQuestionIds.add(questionDoc.id);
+    return { id: questionDoc.id, ...questionDoc.data() };
+}
+
+function displayQuestion(question) {
+    quizQuestionText.textContent = question.questionText;
+    quizAnswersContainer.innerHTML = ''; 
+    
+    question.options.forEach(option => {
+        const button = document.createElement('button');
+        button.className = 'quiz-answer-btn';
+        button.textContent = option;
+        button.dataset.answer = option;
+        quizAnswersContainer.appendChild(button);
+    });
+}
+
+async function handleAnswer(event) {
+    if (!event.target.matches('.quiz-answer-btn')) return;
+
+    quizAnswersContainer.removeEventListener('click', handleAnswer);
+
+    const selectedAnswer = event.target.dataset.answer;
+    const questionDoc = await getDoc(doc(db, "diagnosticQuestions", [...answeredQuestionIds].pop()));
+    const correctAnswer = questionDoc.data().correctAnswer;
+
+    if (selectedAnswer === correctAnswer) {
+        event.target.style.backgroundColor = '#d4edda';
+        currentDifficulty++;
+    } else {
+        event.target.style.backgroundColor = '#f8d7da';
+        currentDifficulty--;
+    }
+
+    if (currentDifficulty > 3) currentDifficulty = 3;
+    if (currentDifficulty < 1) currentDifficulty = 1;
+
+    questionsAnswered++;
+    
+    setTimeout(() => {
+        if (questionsAnswered >= TOTAL_DIAGNOSTIC_QUESTIONS) {
+            endDiagnostic();
+        } else {
+            startNextQuestion();
+        }
+    }, 1000);
+}
+
+async function startNextQuestion() {
+    const question = await fetchQuestion(currentDifficulty);
+    if (question) {
+        displayQuestion(question);
+        quizAnswersContainer.addEventListener('click', handleAnswer);
+    }
+}
+
+function endDiagnostic() {
+    const user = auth.currentUser;
+    if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        setDoc(userDocRef, { 
+            hasCompletedDiagnostic: true,
+            level: currentDifficulty 
+        }, { merge: true });
+
+        diagnosticContainer.classList.add('hidden-view');
+        mainAppContainer.classList.remove('hidden-view');
+    }
 }
