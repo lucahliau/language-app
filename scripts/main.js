@@ -12,9 +12,14 @@ import {
 
 // 2. Your web app's Firebase configuration
 const firebaseConfig = {
-    // ... your config object ...
+    apiKey: "AIzaSyDhPpzjlJ_SdN8c6RMninbITyEyEZZ1kC4",
+    authDomain: "language-app-c0291.firebaseapp.com",
+    projectId: "language-app-c0291",
+    storageBucket: "language-app-c0291.firebasestorage.app",
+    messagingSenderId: "1098129446152",
+    appId: "1:1098129446152:web:085f54b4c5cacf23da48bd",
+    measurementId: "G-D0HLJJVPL1"
 };
-
 // 3. Initialize Firebase and get references to services
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
