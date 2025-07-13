@@ -162,24 +162,37 @@ if ('serviceWorker' in navigator) {
 }
 // --- QUIZ LOGIC ---
 async function fetchQuestion(difficulty) {
+    // Ensure difficulty is a number and within bounds
+    const level = Math.max(1, Math.min(3, difficulty));
+
     const questionsRef = collection(db, "diagnosticQuestions");
-    const q = query(questionsRef, where("difficulty", "==", difficulty), limit(10));
+    const q = query(questionsRef, where("difficulty", "==", level), limit(10));
     const querySnapshot = await getDocs(q);
 
-    if (querySnapshot.empty) {
-        console.warn(`No questions found for difficulty ${difficulty}. Trying a different level.`);
-        return fetchQuestion(difficulty > 1 ? difficulty - 1 : 1); 
-    }
-
+    // Filter out questions we've already used
     const availableQuestions = querySnapshot.docs.filter(doc => !answeredQuestionIds.has(doc.id));
     
-    if (availableQuestions.length === 0) {
-        return endDiagnostic();
+    // If we found a unique question at the target level, return it
+    if (availableQuestions.length > 0) {
+        const questionDoc = availableQuestions[0];
+        answeredQuestionIds.add(questionDoc.id);
+        return { id: questionDoc.id, ...questionDoc.data() };
+    } 
+    
+    // If not, try to find ANY question we haven't answered yet, regardless of difficulty
+    console.warn(`No new questions at difficulty ${level}. Searching all levels.`);
+    const allQuestionsQuery = query(collection(db, "diagnosticQuestions"));
+    const allDocsSnapshot = await getDocs(allQuestionsQuery);
+    const anyNewQuestion = allDocsSnapshot.docs.filter(doc => !answeredQuestionIds.has(doc.id));
+
+    if (anyNewQuestion.length > 0) {
+        const questionDoc = anyNewQuestion[0]; // Return the first available one
+        answeredQuestionIds.add(questionDoc.id);
+        return { id: questionDoc.id, ...questionDoc.data() };
     }
 
-    const questionDoc = availableQuestions[0];
-    answeredQuestionIds.add(questionDoc.id);
-    return { id: questionDoc.id, ...questionDoc.data() };
+    // If there are absolutely no new questions left, return null
+    return null; 
 }
 
 function displayQuestion(question) {
