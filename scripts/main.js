@@ -31,6 +31,32 @@ const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const userPicImg = document.getElementById('user-pic');
 
+// --- Add this new section for Tab Bar Logic ---
+
+const tabBar = document.getElementById('tab-bar');
+const appPages = document.querySelectorAll('.page');
+
+tabBar.addEventListener('click', (event) => {
+  // Check if a tab button was clicked
+  if (event.target.matches('.tab-item')) {
+    const pageIdToShow = event.target.dataset.page;
+
+    // Hide all pages
+    appPages.forEach(page => {
+      page.hidden = true;
+    });
+
+    // Show the target page
+    document.getElementById(pageIdToShow).hidden = false;
+
+    // Update the active state on the tab bar
+    tabBar.querySelectorAll('.tab-item').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+  }
+});
+
 // 5. Functions for Sign In and Sign Out (using modern syntax)
 function signInWithGoogle() {
     signInWithPopup(auth, provider)

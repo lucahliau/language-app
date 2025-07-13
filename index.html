@@ -8,16 +8,35 @@
         <link rel="stylesheet" href="styles/main.css">
     </head>
 <body>
-
-    <h1>Welcome to Your Language App</h1>
-    <button id="signin-btn">Sign in with Google</button>
-
-<div id="user-info" hidden>
-    <img id="user-pic" src="" alt="User Profile Picture" />
-    <p>Welcome, <span id="user-name"></span>!</p>
-    <button id="signout-btn">Sign Out</button>
-</div>
-
-<script type="module" src="scripts/main.js"></script>
+    <main id="app-content">
+        <div id="home-page" class="page">
+          <h1>Home</h1>
+          <p>Your daily progress and stats will appear here.</p>
+        </div>
+      
+        <div id="decks-page" class="page" hidden>
+          <h1>Decks</h1>
+          <p>A list of vocabulary decks will appear here.</p>
+        </div>
+      
+        <div id="review-page" class="page" hidden>
+          <h1>Review</h1>
+          <p>Your daily review session ("Concept Cards") will happen here.</p>
+        </div>
+      
+        <div id="profile-page" class="page" hidden>
+          <h1>Profile</h1>
+          <p>Your analytics dashboard will be here.</p>
+          </div>
+      </main>
+      
+      <nav id="tab-bar">
+        <button data-page="home-page" class="tab-item active">Home</button>
+        <button data-page="decks-page" class="tab-item">Decks</button>
+        <button data-page="review-page" class="tab-item">Review</button>
+        <button data-page="profile-page" class="tab-item">Profile</button>
+      </nav>
+      
+      <script type="module" src="scripts/main.js"></script>
 </body>
 </html>
