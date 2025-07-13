@@ -26,33 +26,38 @@ self.addEventListener('install', event => {
 });
 
 // Fetch event: serve from cache, but update in background
+// Fetch event: serve from cache, but update in background
 self.addEventListener('fetch', event => {
+    // Ignore non-GET requests and requests to other origins (like browser extensions)
+    if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+      return;
+    }
+  
     event.respondWith(
-        caches.match(event.request)
-            .then(cachedResponse => {
-                // Fetch from network in the background to update the cache
-                const fetchPromise = fetch(event.request).then(
-                    networkResponse => {
-                        // If we get a valid response, update the cache
-                        if (networkResponse && networkResponse.status === 200) {
-                            const responseToCache = networkResponse.clone();
-                            caches.open(CACHE_NAME).then(cache => {
-                                cache.put(event.request, responseToCache);
-                            });
-                        }
-                        return networkResponse;
-                    }
-                ).catch(err => {
-                    // Network fetch failed, but that's okay if we have a cached response.
-                    // This catch block prevents the "Failed to fetch" error.
-                    console.warn('Network request failed, but this is okay:', err);
+      caches.match(event.request)
+        .then(cachedResponse => {
+          // Fetch from network in the background to update the cache
+          const fetchPromise = fetch(event.request).then(
+            networkResponse => {
+              // If we get a valid response, update the cache
+              if (networkResponse && networkResponse.status === 200) {
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, responseToCache);
                 });
-
-                // Return the cached response immediately if available, otherwise wait for the network
-                return cachedResponse || fetchPromise;
-            })
+              }
+              return networkResponse;
+            }
+          ).catch(err => {
+            // Network fetch failed, but that's okay if we have a cached response.
+            console.warn('Network request failed:', event.request.url, err.message);
+          });
+  
+          // Return the cached response immediately if available, otherwise wait for the network
+          return cachedResponse || fetchPromise;
+        })
     );
-});
+  });
 
 // Activate event: clean up old caches
 self.addEventListener('activate', event => {
